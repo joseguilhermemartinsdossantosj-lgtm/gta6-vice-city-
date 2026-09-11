@@ -1,0 +1,1192 @@
+```html
+<!DOCTYPE html>
+<html lang="pt-BR" class="h-full bg-black select-none overflow-hidden">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>GTA VI - Vice City Experience</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800;900&family=Permanent+Marker&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        vice: {
+                            pink: '#FF007F',
+                            cyan: '#00F0FF',
+                            purple: '#7B2CBF',
+                            yellow: '#FFE600',
+                            dark: '#0A0A12'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Outfit', 'sans-serif'],
+                        marker: ['Permanent Marker', 'cursive']
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        .neon-text-pink {
+            text-shadow: 0 0 10px #FF007F, 0 0 20px #FF007F, 0 0 40px #FF007F;
+        }
+        .neon-text-cyan {
+            text-shadow: 0 0 10px #00F0FF, 0 0 20px #00F0FF, 0 0 35px #00F0FF;
+        }
+        .neon-border-pink {
+            box-shadow: 0 0 15px rgba(255, 0, 127, 0.6);
+        }
+        .phone-slide {
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        /* Custom Scrollbar for Phone */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.3); }
+        ::-webkit-scrollbar-thumb { background: #FF007F; border-radius: 4px; }
+    </style>
+</head>
+<body class="h-full bg-black text-white font-sans overflow-hidden relative">
+
+    <!-- GAME CANVAS -->
+    <canvas id="gameCanvas" class="absolute inset-0 w-full h-full z-0 cursor-crosshair"></canvas>
+
+    <!-- OVERLAY HUD (GTA VI STYLE UI) -->
+    <div id="hud" class="absolute inset-0 pointer-events-none z-10 flex flex-col justify-between p-4 md:p-6">
+        
+        <!-- TOP BAR: Logo, Wanted Stars & Time/Cash -->
+        <div class="flex items-start justify-between w-full">
+            <!-- Game Logo & Character Switcher Indicator -->
+            <div class="flex flex-col gap-1 pointer-events-auto">
+                <div class="flex items-center gap-2">
+                    <span class="font-marker text-3xl md:text-4xl text-vice-pink neon-text-pink tracking-wider">VI</span>
+                    <span class="font-extrabold text-xs md:text-sm tracking-widest text-vice-cyan uppercase bg-black/60 backdrop-blur px-2.5 py-1 rounded border border-vice-cyan/30">
+                        VICE CITY
+                    </span>
+                </div>
+
+                <!-- Character Pill -->
+                <button onclick="switchCharacter()" class="mt-1 flex items-center gap-2 bg-black/80 hover:bg-black border border-gray-700 px-3 py-1.5 rounded-full text-xs font-bold transition shadow-lg group">
+                    <img id="hud-char-avatar" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80" class="w-5 h-5 rounded-full object-cover border border-vice-pink">
+                    <span id="hud-char-name" class="text-gray-200 group-hover:text-vice-pink">LUCIA</span>
+                    <span class="text-[10px] bg-vice-pink/20 text-vice-pink px-1.5 py-0.5 rounded font-mono">Pressione Z</span>
+                </button>
+            </div>
+
+            <!-- Wanted Stars & Status -->
+            <div class="flex flex-col items-end gap-2">
+                <!-- Stars Container -->
+                <div id="wanted-stars" class="flex gap-1.5 text-xl md:text-2xl drop-shadow-[0_0_10px_rgba(255,230,0,0.8)]">
+                    <i class="fa-solid fa-star text-gray-700" data-star="1"></i>
+                    <i class="fa-solid fa-star text-gray-700" data-star="2"></i>
+                    <i class="fa-solid fa-star text-gray-700" data-star="3"></i>
+                    <i class="fa-solid fa-star text-gray-700" data-star="4"></i>
+                    <i class="fa-solid fa-star text-gray-700" data-star="5"></i>
+                </div>
+
+                <!-- Cash & Clock -->
+                <div class="flex items-center gap-4 bg-black/70 backdrop-blur px-4 py-1.5 rounded-xl border border-white/10 font-mono text-sm md:text-base">
+                    <span id="hud-cash" class="text-emerald-400 font-extrabold">$1,250,800</span>
+                    <span class="text-gray-500">|</span>
+                    <span id="hud-time" class="text-vice-cyan font-bold">22:45</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- CENTER ON-SCREEN NOTIFICATIONS / MESSAGES -->
+        <div id="center-message" class="self-center text-center transition-all duration-300 opacity-0 transform translate-y-4 pointer-events-none">
+            <h2 id="msg-title" class="text-3xl md:text-5xl font-black uppercase tracking-tight text-white drop-shadow-[0_4px_12px_rgba(0,0,0,0.9)]"></h2>
+            <p id="msg-subtitle" class="text-sm md:text-base font-bold text-vice-cyan drop-shadow"></p>
+        </div>
+
+        <!-- BOTTOM BAR: Speedometer, Radio, Radar, Weapon & Vitals -->
+        <div class="flex items-end justify-between w-full">
+            
+            <!-- Bottom Left: Speedometer & Radio Station Info -->
+            <div class="flex flex-col gap-2 pointer-events-auto">
+                <!-- Vehicle Speedometer (Visible when driving) -->
+                <div id="speedometer" class="hidden bg-black/80 backdrop-blur border border-gray-800 p-3 rounded-2xl flex items-baseline gap-2">
+                    <span id="speed-value" class="text-3xl font-black font-mono text-vice-cyan">0</span>
+                    <span class="text-xs font-bold text-gray-400">MPH</span>
+                    <span id="vehicle-name" class="ml-2 text-xs font-bold text-vice-pink uppercase border-l border-gray-700 pl-2">Cheetah GT</span>
+                </div>
+
+                <!-- Active Radio Station Pill -->
+                <div id="radio-pill" onclick="nextRadioStation()" class="bg-black/80 backdrop-blur hover:bg-black border border-vice-pink/40 px-3 py-2 rounded-xl flex items-center gap-3 cursor-pointer transition shadow-lg group">
+                    <div class="w-7 h-7 rounded-lg bg-gradient-to-tr from-vice-pink to-vice-purple flex items-center justify-center text-white text-xs">
+                        <i class="fa-solid fa-radio"></i>
+                    </div>
+                    <div>
+                        <div class="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Rádio Vice City</div>
+                        <div id="radio-name" class="text-xs font-black text-white group-hover:text-vice-pink transition">VICE WAVE 103.5 FM</div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-xs text-gray-500 ml-1"></i>
+                </div>
+            </div>
+
+            <!-- Bottom Center: Controls Quick-Guide Button -->
+            <div class="hidden md:flex gap-2 pointer-events-auto">
+                <button onclick="toggleHelpModal()" class="bg-black/80 hover:bg-black text-gray-300 hover:text-white px-3 py-1.5 rounded-xl border border-gray-800 text-xs font-bold transition flex items-center gap-2">
+                    <i class="fa-solid fa-keyboard text-vice-cyan"></i> Controles [H]
+                </button>
+                <button onclick="togglePhone()" class="bg-black/80 hover:bg-black text-gray-300 hover:text-white px-3 py-1.5 rounded-xl border border-gray-800 text-xs font-bold transition flex items-center gap-2">
+                    <i class="fa-solid fa-mobile-screen-button text-vice-pink"></i> iFruit [P]
+                </button>
+            </div>
+
+            <!-- Bottom Right: Mini-map & Player Vitals -->
+            <div class="flex items-end gap-4">
+                
+                <!-- Vitals & Weapon Wheels -->
+                <div class="flex flex-col items-end gap-2 pointer-events-auto">
+                    <!-- Current Weapon Selector -->
+                    <div id="weapon-badge" onclick="cycleWeapon()" class="bg-black/80 backdrop-blur border border-gray-800 hover:border-vice-cyan p-2.5 rounded-2xl flex items-center gap-3 cursor-pointer transition">
+                        <div id="weapon-icon" class="text-2xl text-vice-pink w-8 h-8 flex items-center justify-center">
+                            <i class="fa-solid fa-gun"></i>
+                        </div>
+                        <div class="text-right">
+                            <div id="weapon-name" class="text-xs font-extrabold uppercase text-white">PISTOLA 9MM</div>
+                            <div id="weapon-ammo" class="text-xs font-mono font-bold text-gray-400">18 / ∞</div>
+                        </div>
+                    </div>
+
+                    <!-- Health & Armor Status Bars -->
+                    <div class="w-44 bg-black/80 backdrop-blur p-2 rounded-xl border border-gray-800 space-y-1.5">
+                        <!-- Health Bar -->
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-heart text-[10px] text-red-500 w-3"></i>
+                            <div class="flex-1 h-2 bg-gray-900 rounded-full overflow-hidden border border-gray-800">
+                                <div id="bar-health" class="h-full bg-gradient-to-r from-red-600 to-emerald-400 w-full transition-all duration-300"></div>
+                            </div>
+                        </div>
+                        <!-- Armor Bar -->
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-shield-halved text-[10px] text-cyan-400 w-3"></i>
+                            <div class="flex-1 h-2 bg-gray-900 rounded-full overflow-hidden border border-gray-800">
+                                <div id="bar-armor" class="h-full bg-vice-cyan w-3/4 transition-all duration-300"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mini-map Radar Container -->
+                <div class="relative w-28 h-28 md:w-36 md:h-36 rounded-full border-2 border-vice-pink/60 bg-black/90 overflow-hidden shadow-2xl flex items-center justify-center">
+                    <canvas id="minimapCanvas" class="w-full h-full rounded-full"></canvas>
+                    <div class="absolute w-2.5 h-2.5 bg-vice-cyan rounded-full border border-black shadow-[0_0_8px_#00F0FF]"></div>
+                    <div class="absolute inset-0 rounded-full pointer-events-none border border-white/10"></div>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- iFRUIT PHONE OVERLAY (SMARTPHONE MENU) -->
+    <div id="iphone-overlay" class="fixed right-4 md:right-12 bottom-6 z-40 w-72 h-[500px] bg-slate-950 border-4 border-slate-800 rounded-[40px] shadow-2xl p-3 flex flex-col justify-between phone-slide transform translate-y-[600px] pointer-events-auto">
+        <!-- Phone Speaker & Camera Notch -->
+        <div class="w-24 h-4 bg-slate-900 rounded-full mx-auto flex items-center justify-center gap-2 mb-2">
+            <div class="w-2 h-2 rounded-full bg-slate-800"></div>
+            <div class="w-1.5 h-1.5 rounded-full bg-blue-900"></div>
+        </div>
+
+        <!-- Phone Header / Status Bar -->
+        <div class="flex justify-between items-center text-[10px] font-bold text-gray-400 px-3">
+            <span>ViZZ Network 5G</span>
+            <span id="phone-clock">22:45</span>
+            <div class="flex gap-1">
+                <i class="fa-solid fa-wifi"></i>
+                <i class="fa-solid fa-battery-three-quarters text-emerald-400"></i>
+            </div>
+        </div>
+
+        <!-- Phone Content Screen -->
+        <div class="flex-1 bg-black rounded-2xl my-2 p-3 overflow-y-auto hide-scrollbar space-y-3 relative">
+            
+            <!-- App Tabs Navigation -->
+            <div class="grid grid-cols-4 gap-2 pt-2 text-center">
+                <button onclick="openPhoneTab('feed')" class="p-2 bg-gray-900 hover:bg-gray-800 rounded-xl text-vice-pink flex flex-col items-center gap-1 text-xs">
+                    <i class="fa-solid fa-camera-retro text-base"></i>
+                    <span class="text-[9px] font-bold text-gray-300">ViZZ Feed</span>
+                </button>
+                <button onclick="openPhoneTab('cheats')" class="p-2 bg-gray-900 hover:bg-gray-800 rounded-xl text-vice-yellow flex flex-col items-center gap-1 text-xs">
+                    <i class="fa-solid fa-code text-base"></i>
+                    <span class="text-[9px] font-bold text-gray-300">Cheats</span>
+                </button>
+                <button onclick="openPhoneTab('radio')" class="p-2 bg-gray-900 hover:bg-gray-800 rounded-xl text-vice-cyan flex flex-col items-center gap-1 text-xs">
+                    <i class="fa-solid fa-music text-base"></i>
+                    <span class="text-[9px] font-bold text-gray-300">Música</span>
+                </button>
+                <button onclick="openPhoneTab('garage')" class="p-2 bg-gray-900 hover:bg-gray-800 rounded-xl text-emerald-400 flex flex-col items-center gap-1 text-xs">
+                    <i class="fa-solid fa-car text-base"></i>
+                    <span class="text-[9px] font-bold text-gray-300">Veículos</span>
+                </button>
+            </div>
+
+            <!-- Tab 1: ViZZ Social Feed (TikTok / Insta style GTA VI Parody) -->
+            <div id="tab-feed" class="phone-tab space-y-3 pt-2">
+                <div class="text-xs font-bold text-vice-pink uppercase tracking-wider flex items-center gap-1">
+                    <i class="fa-solid fa-fire"></i> Em Alta em Vice City
+                </div>
+
+                <div class="bg-gray-900/90 rounded-xl p-2.5 border border-gray-800 text-xs space-y-2">
+                    <div class="flex items-center gap-2">
+                        <div class="w-6 h-6 rounded-full bg-vice-pink flex items-center justify-center font-bold text-[10px]">FL</div>
+                        <div>
+                            <div class="font-bold text-white text-[11px]">@FloridaMan_Official</div>
+                            <div class="text-[9px] text-gray-400">Ocean Drive • Há 12min</div>
+                        </div>
+                    </div>
+                    <img src="https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=400&auto=format&fit=crop&q=80" class="rounded-lg w-full h-24 object-cover">
+                    <p class="text-[10px] text-gray-300">Jacaré gigante visto tentando roubar uma conveniência perto da praia. Dia normal em Vice Beach! 🐊🌴</p>
+                    <div class="flex items-center gap-3 text-gray-400 text-[10px] pt-1">
+                        <span><i class="fa-solid fa-heart text-red-500"></i> 142.8k</span>
+                        <span><i class="fa-solid fa-comment"></i> 3.4k</span>
+                    </div>
+                </div>
+
+                <div class="bg-gray-900/90 rounded-xl p-2.5 border border-gray-800 text-xs space-y-2">
+                    <div class="flex items-center gap-2">
+                        <div class="w-6 h-6 rounded-full bg-vice-cyan text-black flex items-center justify-center font-bold text-[10px]">VC</div>
+                        <div>
+                            <div class="font-bold text-white text-[11px]">@ViceCityPolice</div>
+                            <div class="text-[9px] text-gray-400">Notícia Urgente</div>
+                        </div>
+                    </div>
+                    <p class="text-[10px] text-gray-300">Aviso: Mantenha atenção nas rodovias de Port Gellhorn. Perseguição de alta velocidade registrada neste momento!</p>
+                </div>
+            </div>
+
+            <!-- Tab 2: Cheats App -->
+            <div id="tab-cheats" class="phone-tab hidden space-y-2 pt-2">
+                <div class="text-xs font-bold text-vice-yellow uppercase tracking-wider">Códigos de Trapaça (Cheats)</div>
+                <div class="grid grid-cols-1 gap-1.5 text-xs">
+                    <button onclick="applyCheat('health')" class="w-full bg-gray-900 hover:bg-gray-800 p-2 rounded-lg text-left text-emerald-400 font-bold border border-gray-800 flex justify-between items-center">
+                        <span><i class="fa-solid fa-kit-medical mr-1"></i> Vida & Colete Máximos</span>
+                        <i class="fa-solid fa-bolt"></i>
+                    </button>
+                    <button onclick="applyCheat('wanted_clear')" class="w-full bg-gray-900 hover:bg-gray-800 p-2 rounded-lg text-left text-vice-cyan font-bold border border-gray-800 flex justify-between items-center">
+                        <span><i class="fa-solid fa-shield-cat mr-1"></i> Limpar Estrelas de Polícia</span>
+                        <i class="fa-solid fa-check"></i>
+                    </button>
+                    <button onclick="applyCheat('spawn_car')" class="w-full bg-gray-900 hover:bg-gray-800 p-2 rounded-lg text-left text-vice-pink font-bold border border-gray-800 flex justify-between items-center">
+                        <span><i class="fa-solid fa-car-side mr-1"></i> Gerar Supercarro Cheetah</span>
+                        <i class="fa-solid fa-plus"></i>
+                    </button>
+                    <button onclick="applyCheat('money')" class="w-full bg-gray-900 hover:bg-gray-800 p-2 rounded-lg text-left text-vice-yellow font-bold border border-gray-800 flex justify-between items-center">
+                        <span><i class="fa-solid fa-sack-dollar mr-1"></i> +$250,000 em Dinheiro</span>
+                        <i class="fa-solid fa-coins"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tab 3: Radio Music Player -->
+            <div id="tab-radio" class="phone-tab hidden space-y-2 pt-2 text-xs">
+                <div class="text-xs font-bold text-vice-cyan uppercase tracking-wider">Estações de Rádio</div>
+                <div id="phone-radio-list" class="space-y-1.5">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+            <!-- Tab 4: Vehicle Delivery Garage -->
+            <div id="tab-garage" class="phone-tab hidden space-y-2 pt-2 text-xs">
+                <div class="text-xs font-bold text-emerald-400 uppercase tracking-wider">Solicitar Veículo</div>
+                <div class="space-y-2">
+                    <button onclick="spawnVehicleType('sports')" class="w-full bg-gray-900 hover:bg-gray-800 p-2 rounded-lg border border-gray-800 flex items-center gap-2">
+                        <i class="fa-solid fa-car text-vice-pink text-base"></i>
+                        <div class="text-left">
+                            <div class="font-bold text-white">Cheetah GT (Esportivo)</div>
+                            <div class="text-[9px] text-gray-400">Velocidade Alta</div>
+                        </div>
+                    </button>
+                    <button onclick="spawnVehicleType('police')" class="w-full bg-gray-900 hover:bg-gray-800 p-2 rounded-lg border border-gray-800 flex items-center gap-2">
+                        <i class="fa-solid fa-shield-halved text-vice-cyan text-base"></i>
+                        <div class="text-left">
+                            <div class="font-bold text-white">VCPD Interceptor (Polícia)</div>
+                            <div class="text-[9px] text-gray-400">Com Sirene</div>
+                        </div>
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Home Bar Button -->
+        <button onclick="togglePhone()" class="w-20 h-1 bg-gray-600 rounded-full mx-auto hover:bg-white transition"></button>
+    </div>
+
+    <!-- HELP / CONTROLS MODAL -->
+    <div id="help-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-vice-pink/50 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl relative">
+            <button onclick="toggleHelpModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white text-xl">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+
+            <div class="text-center space-y-1">
+                <h3 class="text-2xl font-black text-vice-pink neon-text-pink uppercase tracking-wide">GTA VI Vice City</h3>
+                <p class="text-xs text-gray-400">Guia de Controles e Atalhos de Teclado</p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 text-xs">
+                <div class="bg-black/60 p-2.5 rounded-lg border border-gray-800">
+                    <span class="font-bold text-vice-cyan block">W A S D / Setas</span>
+                    <span class="text-gray-400 text-[10px]">Mover personagem / Dirigir</span>
+                </div>
+                <div class="bg-black/60 p-2.5 rounded-lg border border-gray-800">
+                    <span class="font-bold text-vice-cyan block">F ou ENTER</span>
+                    <span class="text-gray-400 text-[10px]">Entrar / Sair do Veículo</span>
+                </div>
+                <div class="bg-black/60 p-2.5 rounded-lg border border-gray-800">
+                    <span class="font-bold text-vice-cyan block">Clique Esquerdo</span>
+                    <span class="text-gray-400 text-[10px]">Atirar / Atacar com Arma</span>
+                </div>
+                <div class="bg-black/60 p-2.5 rounded-lg border border-gray-800">
+                    <span class="font-bold text-vice-cyan block">1, 2, 3 / Q</span>
+                    <span class="text-gray-400 text-[10px]">Trocar de Arma</span>
+                </div>
+                <div class="bg-black/60 p-2.5 rounded-lg border border-gray-800">
+                    <span class="font-bold text-vice-cyan block">Z</span>
+                    <span class="text-gray-400 text-[10px]">Alternar entre Lucia & Jason</span>
+                </div>
+                <div class="bg-black/60 p-2.5 rounded-lg border border-gray-800">
+                    <span class="font-bold text-vice-cyan block">P / Seta Cima</span>
+                    <span class="text-gray-400 text-[10px]">Abrir Celular iFruit</span>
+                </div>
+                <div class="bg-black/60 p-2.5 rounded-lg border border-gray-800 col-span-2">
+                    <span class="font-bold text-vice-pink block">Rádio</span>
+                    <span class="text-gray-400 text-[10px]">Clique na estação no canto inferior esquerdo para trocar de rádio synthwave em tempo real.</span>
+                </div>
+            </div>
+
+            <button onclick="toggleHelpModal()" class="w-full bg-gradient-to-r from-vice-pink to-vice-purple hover:opacity-90 text-white font-extrabold py-2.5 rounded-xl transition text-xs uppercase tracking-wider">
+                Entendido, Ir para Vice City!
+            </button>
+        </div>
+    </div>
+
+    <!-- GAME ENGINE & JAVASCRIPT LOGIC -->
+    <script>
+        /* --- AUDIO SYNTHESIZER (WEB AUDIO API) --- */
+        class SoundSystem {
+            constructor() {
+                this.ctx = null;
+                this.radioOsc = null;
+                this.isPlayingRadio = false;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+
+            playShoot() {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(400, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(40, this.ctx.currentTime + 0.12);
+                gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.12);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.12);
+            }
+
+            playExplosion() {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(120, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(20, this.ctx.currentTime + 0.4);
+                gain.gain.setValueAtTime(0.5, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.4);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.4);
+            }
+
+            playSiren() {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                const now = this.ctx.currentTime;
+                osc.frequency.setValueAtTime(600, now);
+                osc.frequency.linearRampToValueAtTime(900, now + 0.25);
+                osc.frequency.linearRampToValueAtTime(600, now + 0.5);
+                gain.gain.setValueAtTime(0.15, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(now + 0.5);
+            }
+
+            playRadioLoop(genre) {
+                this.init();
+                if (this.radioOsc) {
+                    try { this.radioOsc.stop(); } catch(e){}
+                }
+                
+                if (genre === 'OFF') return;
+
+                // Create synth loop sound
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = genre === 'synth' ? 'sawtooth' : 'triangle';
+                
+                // Arpeggio simulation
+                const freqMap = { synth: 220, rock: 165, rap: 130, pop: 293 };
+                const baseFreq = freqMap[genre] || 220;
+                
+                osc.frequency.setValueAtTime(baseFreq, this.ctx.currentTime);
+                gain.gain.setValueAtTime(0.05, this.ctx.currentTime);
+                
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                this.radioOsc = osc;
+            }
+        }
+
+        const audio = new SoundSystem();
+
+        /* --- GAME DATABASE & STATE --- */
+        const WORLD_SIZE = 3200;
+
+        const CHARACTERS = {
+            lucia: {
+                name: "Lucia",
+                avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80",
+                color: "#FF007F",
+                speed: 4.2
+            },
+            jason: {
+                name: "Jason",
+                avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80",
+                color: "#00F0FF",
+                speed: 4.5
+            }
+        };
+
+        const WEAPONS = [
+            { id: 'pistol', name: 'Pistola 9mm', ammo: '18 / ∞', icon: 'fa-gun', damage: 35, fireRate: 200 },
+            { id: 'rifle', name: 'Fuzil de Assalto', ammo: '120 / 300', icon: 'fa-person-rifle', damage: 55, fireRate: 100 },
+            { id: 'shotgun', name: 'Espingarda 12', ammo: '32 / 60', icon: 'fa-burst', damage: 90, fireRate: 600 }
+        ];
+
+        const RADIO_STATIONS = [
+            { name: "VICE WAVE 103.5 FM", genre: "synth" },
+            { name: "FLASH FM POP", genre: "pop" },
+            { name: "V-ROCK HEAVY", genre: "rock" },
+            { name: "BEAT 98.3 HIP-HOP", genre: "rap" },
+            { name: "RÁDIO DESLIGADA", genre: "OFF" }
+        ];
+
+        const gameState = {
+            activeCharKey: 'lucia',
+            cash: 1250800,
+            health: 100,
+            armor: 75,
+            wantedLevel: 0,
+            currentWeaponIdx: 0,
+            currentRadioIdx: 0,
+            isPhoneOpen: false,
+            inVehicle: null,
+            lastShootTime: 0
+        };
+
+        /* --- ENTITIES & WORLD OBJECTS --- */
+        const player = {
+            x: 1600,
+            y: 1600,
+            angle: 0,
+            radius: 12,
+            vx: 0,
+            vy: 0
+        };
+
+        const keys = {};
+        const mouse = { x: 0, y: 0, worldX: 0, worldY: 0, down: false };
+
+        const vehicles = [];
+        const policeCars = [];
+        const bullets = [];
+        const pedestrians = [];
+        const particleEffects = [];
+
+        // Generate City Map Elements (Roads, Buildings, Beach)
+        const buildings = [];
+        function generateCity() {
+            // Beach area on the right (x > 2600)
+            // City grid of buildings
+            for (let x = 300; x < 2400; x += 400) {
+                for (let y = 300; y < 2800; y += 400) {
+                    buildings.push({
+                        x: x,
+                        y: y,
+                        w: 260,
+                        h: 260,
+                        color: '#121220',
+                        neonColor: (x + y) % 800 === 0 ? '#FF007F' : '#00F0FF'
+                    });
+                }
+            }
+
+            // Spawn Initial Vehicles
+            vehicles.push({ id: 'car1', x: 1500, y: 1550, angle: 0, speed: 0, maxSpeed: 8, name: "Cheetah GT", type: "sports", color: "#FF007F" });
+            vehicles.push({ id: 'car2', x: 1700, y: 1650, angle: 1.5, speed: 0, maxSpeed: 7.5, name: "Infernus XL", type: "sports", color: "#00F0FF" });
+            vehicles.push({ id: 'car3', x: 1400, y: 1800, angle: 0, speed: 0, maxSpeed: 7, name: "VCPD Cruiser", type: "police", color: "#FFFFFF" });
+
+            // Spawn Pedestrians
+            for (let i = 0; i < 30; i++) {
+                pedestrians.push({
+                    x: Math.random() * 2200 + 300,
+                    y: Math.random() * 2200 + 300,
+                    angle: Math.random() * Math.PI * 2,
+                    speed: 1 + Math.random(),
+                    health: 50
+                });
+            }
+        }
+
+        /* --- CANVAS INITIALIZATION & ENGINE --- */
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const minimapCanvas = document.getElementById('minimapCanvas');
+        const mctx = minimapCanvas.getContext('2d');
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            minimapCanvas.width = 150;
+            minimapCanvas.height = 150;
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        /* --- INPUT HANDLING --- */
+        window.addEventListener('keydown', (e) => {
+            keys[e.code] = true;
+
+            // Character switch
+            if (e.code === 'KeyZ') switchCharacter();
+            // Phone toggle
+            if (e.code === 'KeyP' || e.code === 'ArrowUp') togglePhone();
+            // Vehicle enter/exit
+            if (e.code === 'KeyF' || e.code === 'Enter') toggleVehicleEnterExit();
+            // Change weapon
+            if (e.code === 'Digit1') setWeapon(0);
+            if (e.code === 'Digit2') setWeapon(1);
+            if (e.code === 'Digit3') setWeapon(2);
+            if (e.code === 'KeyH') toggleHelpModal();
+        });
+
+        window.addEventListener('keyup', (e) => {
+            keys[e.code] = false;
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
+        });
+
+        window.addEventListener('mousedown', (e) => {
+            if (e.button === 0 && !gameState.isPhoneOpen) {
+                mouse.down = true;
+                shootWeapon();
+            }
+        });
+
+        window.addEventListener('mouseup', () => {
+            mouse.down = false;
+        });
+
+        /* --- GAME LOGIC UPDATES --- */
+        function update() {
+            const char = CHARACTERS[gameState.activeCharKey];
+            const moveSpeed = char.speed;
+
+            // Screen space to world space translation
+            mouse.worldX = player.x + (mouse.x - canvas.width / 2);
+            mouse.worldY = player.y + (mouse.y - canvas.height / 2);
+
+            // If driving vehicle
+            if (gameState.inVehicle) {
+                const veh = gameState.inVehicle;
+                
+                if (keys['KeyW'] || keys['ArrowUp']) {
+                    veh.speed = Math.min(veh.speed + 0.2, veh.maxSpeed);
+                } else if (keys['KeyS'] || keys['ArrowDown']) {
+                    veh.speed = Math.max(veh.speed - 0.15, -veh.maxSpeed * 0.4);
+                } else {
+                    veh.speed *= 0.96; // Friction
+                }
+
+                if (Math.abs(veh.speed) > 0.2) {
+                    const dir = veh.speed > 0 ? 1 : -1;
+                    if (keys['KeyA'] || keys['ArrowLeft']) veh.angle -= 0.05 * dir;
+                    if (keys['KeyD'] || keys['ArrowRight']) veh.angle += 0.05 * dir;
+                }
+
+                veh.x += Math.cos(veh.angle) * veh.speed;
+                veh.y += Math.sin(veh.angle) * veh.speed;
+
+                // Sync player position with vehicle
+                player.x = veh.x;
+                player.y = veh.y;
+                player.angle = veh.angle;
+
+                // Update Speedometer UI
+                document.getElementById('speed-value').textContent = Math.round(Math.abs(veh.speed) * 12);
+            } else {
+                // Walking / Running on Foot
+                let dx = 0;
+                let dy = 0;
+
+                if (keys['KeyW'] || keys['ArrowUp']) dy -= 1;
+                if (keys['KeyS'] || keys['ArrowDown']) dy += 1;
+                if (keys['KeyA'] || keys['ArrowLeft']) dx -= 1;
+                if (keys['KeyD'] || keys['ArrowRight']) dx += 1;
+
+                if (dx !== 0 || dy !== 0) {
+                    const angle = Math.atan2(dy, dx);
+                    player.x += Math.cos(angle) * moveSpeed;
+                    player.y += Math.sin(angle) * moveSpeed;
+                }
+
+                // Face mouse position
+                player.angle = Math.atan2(mouse.worldY - player.y, mouse.worldX - player.x);
+            }
+
+            // Keep player inside World Bounds
+            player.x = Math.max(50, Math.min(WORLD_SIZE - 50, player.x));
+            player.y = Math.max(50, Math.min(WORLD_SIZE - 50, player.y));
+
+            // Update Bullets
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                const b = bullets[i];
+                b.x += Math.cos(b.angle) * b.speed;
+                b.y += Math.sin(b.angle) * b.speed;
+                b.life--;
+
+                // Check collision with pedestrians
+                for (let j = pedestrians.length - 1; j >= 0; j--) {
+                    const p = pedestrians[j];
+                    const dist = Math.hypot(p.x - b.x, p.y - b.y);
+                    if (dist < 18) {
+                        p.health -= b.damage;
+                        bullets.splice(i, 1);
+                        
+                        // Increase wanted level if attacking civilians
+                        triggerWantedStar();
+
+                        if (p.health <= 0) {
+                            pedestrians.splice(j, 1);
+                            createExplosion(p.x, p.y, '#FF0055');
+                        }
+                        break;
+                    }
+                }
+
+                if (b && b.life <= 0) bullets.splice(i, 1);
+            }
+
+            // Update Police Cars AI (If Wanted Level > 0)
+            if (gameState.wantedLevel > 0) {
+                if (policeCars.length < gameState.wantedLevel) {
+                    policeCars.push({
+                        x: player.x + (Math.random() - 0.5) * 1000,
+                        y: player.y + (Math.random() - 0.5) * 1000,
+                        angle: 0,
+                        speed: 5 + gameState.wantedLevel,
+                        color: '#1E40AF'
+                    });
+                    audio.playSiren();
+                }
+
+                policeCars.forEach(police => {
+                    const angleToPlayer = Math.atan2(player.y - police.y, player.x - police.x);
+                    police.angle = angleToPlayer;
+                    police.x += Math.cos(police.angle) * police.speed;
+                    police.y += Math.sin(police.angle) * police.speed;
+
+                    // Damage player if police catches them
+                    if (Math.hypot(player.x - police.x, player.y - police.y) < 30) {
+                        damagePlayer(0.3);
+                    }
+                });
+            }
+
+            // Update Pedestrians movement
+            pedestrians.forEach(p => {
+                p.x += Math.cos(p.angle) * p.speed;
+                p.y += Math.sin(p.angle) * p.speed;
+                if (Math.random() < 0.02) p.angle += (Math.random() - 0.5) * 1.5;
+            });
+
+            // Update Particles
+            for (let i = particleEffects.length - 1; i >= 0; i--) {
+                const pt = particleEffects[i];
+                pt.x += pt.vx;
+                pt.y += pt.vy;
+                pt.alpha -= 0.03;
+                if (pt.alpha <= 0) particleEffects.splice(i, 1);
+            }
+        }
+
+        /* --- WEAPON SHOOTING LOGIC --- */
+        function shootWeapon() {
+            const now = Date.now();
+            const curWeapon = WEAPONS[gameState.currentWeaponIdx];
+            
+            if (now - gameState.lastShootTime < curWeapon.fireRate) return;
+            gameState.lastShootTime = now;
+
+            audio.playShoot();
+
+            bullets.push({
+                x: player.x + Math.cos(player.angle) * 20,
+                y: player.y + Math.sin(player.angle) * 20,
+                angle: player.angle + (Math.random() - 0.5) * 0.1,
+                speed: 16,
+                damage: curWeapon.damage,
+                life: 40
+            });
+
+            triggerWantedStar();
+        }
+
+        function triggerWantedStar() {
+            if (gameState.wantedLevel < 5 && Math.random() < 0.3) {
+                gameState.wantedLevel++;
+                updateWantedStarsUI();
+                showCenterNotification("POLÍCIA ALERTA", `Nível de Procurado: ${gameState.wantedLevel} Estrela(s)`);
+            }
+        }
+
+        function damagePlayer(amount) {
+            if (gameState.armor > 0) {
+                gameState.armor = Math.max(0, gameState.armor - amount);
+            } else {
+                gameState.health = Math.max(0, gameState.health - amount);
+            }
+
+            document.getElementById('bar-health').style.width = `${gameState.health}%`;
+            document.getElementById('bar-armor').style.width = `${gameState.armor}%`;
+
+            if (gameState.health <= 0) {
+                showCenterNotification("SE FODEU!", "Você foi preso/morto pela polícia de Vice City");
+                setTimeout(() => {
+                    gameState.health = 100;
+                    gameState.armor = 50;
+                    gameState.wantedLevel = 0;
+                    player.x = 1600;
+                    player.y = 1600;
+                    policeCars.length = 0;
+                    updateWantedStarsUI();
+                    document.getElementById('bar-health').style.width = '100%';
+                }, 2000);
+            }
+        }
+
+        /* --- RENDERING engine (CANVAS 2D) --- */
+        function render() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Camera offset centering on player
+            ctx.save();
+            ctx.translate(canvas.width / 2 - player.x, canvas.height / 2 - player.y);
+
+            // 1. Draw Ground/Grass/Ocean Grid
+            ctx.fillStyle = '#0a0a14';
+            ctx.fillRect(0, 0, WORLD_SIZE, WORLD_SIZE);
+
+            // Ocean Beach line (Right side)
+            ctx.fillStyle = '#00F0FF22';
+            ctx.fillRect(2600, 0, WORLD_SIZE - 2600, WORLD_SIZE);
+            ctx.fillStyle = '#FFE60022'; // Sand
+            ctx.fillRect(2500, 0, 100, WORLD_SIZE);
+
+            // Roads Grid
+            ctx.strokeStyle = '#1e1e38';
+            ctx.lineWidth = 80;
+            ctx.beginPath();
+            for (let i = 200; i < WORLD_SIZE; i += 400) {
+                ctx.moveTo(i, 0); ctx.lineTo(i, WORLD_SIZE);
+                ctx.moveTo(0, i); ctx.lineTo(WORLD_SIZE, i);
+            }
+            ctx.stroke();
+
+            // Road Markings (Yellow Lines)
+            ctx.strokeStyle = '#FFE60066';
+            ctx.lineWidth = 3;
+            ctx.setLineDash([15, 15]);
+            ctx.beginPath();
+            for (let i = 200; i < WORLD_SIZE; i += 400) {
+                ctx.moveTo(i, 0); ctx.lineTo(i, WORLD_SIZE);
+                ctx.moveTo(0, i); ctx.lineTo(WORLD_SIZE, i);
+            }
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // 2. Draw Buildings with Neon Glow Effects
+            buildings.forEach(b => {
+                ctx.fillStyle = b.color;
+                ctx.fillRect(b.x, b.y, b.w, b.h);
+
+                // Neon roof border
+                ctx.strokeStyle = b.neonColor;
+                ctx.lineWidth = 4;
+                ctx.shadowColor = b.neonColor;
+                ctx.shadowBlur = 15;
+                ctx.strokeRect(b.x, b.y, b.w, b.h);
+                ctx.shadowBlur = 0;
+            });
+
+            // 3. Draw Pedestrians
+            pedestrians.forEach(p => {
+                ctx.fillStyle = '#FFC107';
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 8, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // 4. Draw Vehicles
+            vehicles.forEach(v => {
+                ctx.save();
+                ctx.translate(v.x, v.y);
+                ctx.rotate(v.angle);
+
+                // Car body
+                ctx.fillStyle = v.color;
+                ctx.shadowColor = v.color;
+                ctx.shadowBlur = 10;
+                ctx.fillRect(-22, -12, 44, 24);
+                ctx.shadowBlur = 0;
+
+                // Car windshield
+                ctx.fillStyle = '#000000';
+                ctx.fillRect(-6, -9, 14, 18);
+
+                // Headlights
+                ctx.fillStyle = '#FFFF99';
+                ctx.fillRect(20, -10, 4, 5);
+                ctx.fillRect(20, 5, 4, 5);
+
+                ctx.restore();
+            });
+
+            // 5. Draw Police Cars
+            policeCars.forEach(p => {
+                ctx.save();
+                ctx.translate(p.x, p.y);
+                ctx.rotate(p.angle);
+
+                ctx.fillStyle = '#111';
+                ctx.fillRect(-20, -12, 40, 24);
+                
+                // Police lights (Flashing Red/Blue)
+                const flash = Math.floor(Date.now() / 150) % 2 === 0;
+                ctx.fillStyle = flash ? '#FF0055' : '#00F0FF';
+                ctx.fillRect(-2, -10, 5, 20);
+
+                ctx.restore();
+            });
+
+            // 6. Draw Bullets
+            ctx.fillStyle = '#FFE600';
+            bullets.forEach(b => {
+                ctx.beginPath();
+                ctx.arc(b.x, b.y, 3, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // 7. Draw Player (If on foot)
+            if (!gameState.inVehicle) {
+                ctx.save();
+                ctx.translate(player.x, player.y);
+                ctx.rotate(player.angle);
+
+                const activeChar = CHARACTERS[gameState.activeCharKey];
+
+                // Player body / avatar circle with neon aura
+                ctx.fillStyle = activeChar.color;
+                ctx.shadowColor = activeChar.color;
+                ctx.shadowBlur = 15;
+                ctx.beginPath();
+                ctx.arc(0, 0, player.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+
+                // Gun hands facing forward
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(8, 4, 10, 4);
+
+                ctx.restore();
+            }
+
+            // 8. Draw Particle Effects
+            particleEffects.forEach(pt => {
+                ctx.fillStyle = pt.color;
+                ctx.globalAlpha = pt.alpha;
+                ctx.beginPath();
+                ctx.arc(pt.x, pt.y, pt.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1;
+            });
+
+            ctx.restore();
+
+            // Render Mini-map
+            renderMinimap();
+        }
+
+        /* --- MINIMAP RADAR RENDER --- */
+        function renderMinimap() {
+            mctx.clearRect(0, 0, 150, 150);
+            mctx.save();
+            mctx.translate(75, 75);
+            
+            const scale = 0.06;
+
+            // Draw nearby buildings on radar
+            mctx.fillStyle = '#333355';
+            buildings.forEach(b => {
+                const rx = (b.x - player.x) * scale;
+                const ry = (b.y - player.y) * scale;
+                mctx.fillRect(rx, ry, b.w * scale, b.h * scale);
+            });
+
+            // Draw nearby vehicles (Yellow blips)
+            mctx.fillStyle = '#FFE600';
+            vehicles.forEach(v => {
+                const rx = (v.x - player.x) * scale;
+                const ry = (v.y - player.y) * scale;
+                mctx.fillRect(rx - 2, ry - 2, 5, 5);
+            });
+
+            // Draw Police (Red/Blue pulsing blips)
+            mctx.fillStyle = '#FF0055';
+            policeCars.forEach(p => {
+                const rx = (p.x - player.x) * scale;
+                const ry = (p.y - player.y) * scale;
+                mctx.fillRect(rx - 3, ry - 3, 6, 6);
+            });
+
+            mctx.restore();
+        }
+
+        function createExplosion(x, y, color = '#FF5500') {
+            audio.playExplosion();
+            for (let i = 0; i < 15; i++) {
+                particleEffects.push({
+                    x: x, y: y,
+                    vx: (Math.random() - 0.5) * 6,
+                    vy: (Math.random() - 0.5) * 6,
+                    size: Math.random() * 6 + 2,
+                    color: color,
+                    alpha: 1
+                });
+            }
+        }
+
+        /* --- UI & GAME ACTION HELPERS --- */
+        function switchCharacter() {
+            gameState.activeCharKey = gameState.activeCharKey === 'lucia' ? 'jason' : 'lucia';
+            const char = CHARACTERS[gameState.activeCharKey];
+
+            document.getElementById('hud-char-avatar').src = char.avatar;
+            document.getElementById('hud-char-name').textContent = char.name.toUpperCase();
+            document.getElementById('hud-char-name').style.color = char.color;
+
+            showCenterNotification("TROCA DE PERSONAGEM", `Jogando como ${char.name}`);
+        }
+
+        function toggleVehicleEnterExit() {
+            if (gameState.inVehicle) {
+                // Exit vehicle
+                gameState.inVehicle.speed = 0;
+                gameState.inVehicle = null;
+                document.getElementById('speedometer').classList.add('hidden');
+                showCenterNotification("VEÍCULO", "Você saiu do veículo");
+            } else {
+                // Find closest vehicle to enter
+                const nearCar = vehicles.find(v => Math.hypot(v.x - player.x, v.y - player.y) < 60);
+                if (nearCar) {
+                    gameState.inVehicle = nearCar;
+                    document.getElementById('vehicle-name').textContent = nearCar.name;
+                    document.getElementById('speedometer').classList.remove('hidden');
+                    showCenterNotification("VEÍCULO", `Dirigindo ${nearCar.name}`);
+                }
+            }
+        }
+
+        function cycleWeapon() {
+            gameState.currentWeaponIdx = (gameState.currentWeaponIdx + 1) % WEAPONS.length;
+            updateWeaponUI();
+        }
+
+        function setWeapon(idx) {
+            gameState.currentWeaponIdx = idx;
+            updateWeaponUI();
+        }
+
+        function updateWeaponUI() {
+            const w = WEAPONS[gameState.currentWeaponIdx];
+            document.getElementById('weapon-name').textContent = w.name;
+            document.getElementById('weapon-ammo').textContent = w.ammo;
+            document.getElementById('weapon-icon').innerHTML = `<i class="fa-solid ${w.icon}"></i>`;
+        }
+
+        function nextRadioStation() {
+            gameState.currentRadioIdx = (gameState.currentRadioIdx + 1) % RADIO_STATIONS.length;
+            const station = RADIO_STATIONS[gameState.currentRadioIdx];
+            document.getElementById('radio-name').textContent = station.name;
+            audio.playRadioLoop(station.genre);
+            showCenterNotification("RÁDIO VICE CITY", station.name);
+        }
+
+        function updateWantedStarsUI() {
+            const starsContainer = document.getElementById('wanted-stars');
+            const starIcons = starsContainer.querySelectorAll('i');
+
+            starIcons.forEach((star, idx) => {
+                if (idx < gameState.wantedLevel) {
+                    star.className = "fa-solid fa-star text-vice-yellow animate-pulse";
+                } else {
+                    star.className = "fa-solid fa-star text-gray-700";
+                }
+            });
+        }
+
+        function togglePhone() {
+            const phone = document.getElementById('iphone-overlay');
+            gameState.isPhoneOpen = !gameState.isPhoneOpen;
+
+            if (gameState.isPhoneOpen) {
+                phone.classList.remove('translate-y-[600px]');
+                phone.classList.add('translate-y-0');
+            } else {
+                phone.classList.remove('translate-y-0');
+                phone.classList.add('translate-y-[600px]');
+            }
+        }
+
+        function openPhoneTab(tabName) {
+            document.querySelectorAll('.phone-tab').forEach(t => t.classList.add('hidden'));
+            document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+        }
+
+        function applyCheat(cheatType) {
+            if (cheatType === 'health') {
+                gameState.health = 100;
+                gameState.armor = 100;
+                document.getElementById('bar-health').style.width = '100%';
+                document.getElementById('bar-armor').style.width = '100%';
+                showCenterNotification("CHEAT ATIVADO", "Vida & Colete Máximos!");
+            } else if (cheatType === 'wanted_clear') {
+                gameState.wantedLevel = 0;
+                policeCars.length = 0;
+                updateWantedStarsUI();
+                showCenterNotification("CHEAT ATIVADO", "Estrelas de Polícia Limpas!");
+            } else if (cheatType === 'spawn_car') {
+                vehicles.push({
+                    id: 'cheat_car_' + Date.now(),
+                    x: player.x + 40,
+                    y: player.y + 40,
+                    angle: 0, speed: 0, maxSpeed: 9,
+                    name: "Cheetah Custom VI",
+                    type: "sports",
+                    color: "#FF007F"
+                });
+                showCenterNotification("CHEAT ATIVADO", "Supercarro Gerado!");
+            } else if (cheatType === 'money') {
+                gameState.cash += 250000;
+                document.getElementById('hud-cash').textContent = `$${gameState.cash.toLocaleString()}`;
+                showCenterNotification("CHEAT ATIVADO", "+$250,000 Adicionados!");
+            }
+        }
+
+        function spawnVehicleType(type) {
+            vehicles.push({
+                id: 'spawned_' + Date.now(),
+                x: player.x + 30,
+                y: player.y + 30,
+                angle: player.angle,
+                speed: 0,
+                maxSpeed: type === 'sports' ? 8.5 : 7.5,
+                name: type === 'sports' ? "Cheetah GT" : "VCPD Cruiser",
+                type: type,
+                color: type === 'sports' ? "#00F0FF" : "#FFFFFF"
+            });
+            showCenterNotification("GARAGEM", "Veículo entregue próximo a você!");
+        }
+
+        function toggleHelpModal() {
+            const modal = document.getElementById('help-modal');
+            modal.classList.toggle('hidden');
+        }
+
+        function showCenterNotification(title, subtitle) {
+            const el = document.getElementById('center-message');
+            document.getElementById('msg-title').textContent = title;
+            document.getElementById('msg-subtitle').textContent = subtitle;
+
+            el.classList.remove('opacity-0', 'translate-y-4');
+            el.classList.add('opacity-100', 'translate-y-0');
+
+            setTimeout(() => {
+                el.classList.remove('opacity-100', 'translate-y-0');
+                el.classList.add('opacity-0', 'translate-y-4');
+            }, 2500);
+        }
+
+        function updateClock() {
+            const date = new Date();
+            const timeStr = `${String(date.getHours()).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}`;
+            document.getElementById('hud-time').textContent = timeStr;
+            document.getElementById('phone-clock').textContent = timeStr;
+        }
+
+        /* Populate Radio List in Phone */
+        function initPhoneRadioList() {
+            const list = document.getElementById('phone-radio-list');
+            list.innerHTML = RADIO_STATIONS.map((s, idx) => `
+                <button onclick="gameState.currentRadioIdx=${idx}; nextRadioStation();" class="w-full bg-gray-900 hover:bg-gray-800 p-2 rounded-lg text-left text-white font-bold border border-gray-800 flex justify-between items-center text-[11px]">
+                    <span><i class="fa-solid fa-radio text-vice-pink mr-1.5"></i> ${s.name}</span>
+                    <i class="fa-solid fa-play text-[10px] text-gray-500"></i>
+                </button>
+            `).join('');
+        }
+
+        /* --- MAIN LOOP --- */
+        generateCity();
+        initPhoneRadioList();
+        setInterval(updateClock, 1000);
+
+        function gameLoop() {
+            update();
+            render();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Start Game
+        requestAnimationFrame(gameLoop);
+    </script>
+</body>
+</html>
+```
